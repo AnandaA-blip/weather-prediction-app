@@ -68,7 +68,7 @@ with st.sidebar:
 
 # --- 4. PREDIKSI ---
 if st.button("Prediksi Sekarang"):
-    # Gunakan spinner agar user tahu proses sedang berjalan
+    # Spinner memberikan umpan balik visual bahwa proses berjalan
     with st.spinner('Menganalisis data...'):
         inputs = {
             'date': date_in, 'location': loc_in, 'humidity_3pm': hum_in,
@@ -77,26 +77,26 @@ if st.button("Prediksi Sekarang"):
             'min_temp': min_t_in, 'max_temp': max_t_in, 'rain_today': rt_in
         }
         
-        # 1. Pastikan nama variabel konsisten: final_df
+        # Pastikan nama variabel adalah final_df
         final_df = transform_user_input(inputs, assets)
 
-        # 2. SEMUA KODE DI BAWAH INI HARUS MASUK INDENTASI (MENJOROK KE DALAM)
-        # [cite_start]Menampilkan jumlah kolom untuk verifikasi [cite: 1214, 1216]
-        st.write("Jumlah Kolom Input:", final_df.shape[1]) 
+        # --- DEBUGGING ---
+        # Menampilkan jumlah kolom untuk memastikan kesesuaian dengan model (70 kolom)
+        st.write(f"Jumlah Kolom Input: {final_df.shape[1]}")
         
         if final_df.shape[1] != 70:
-            [cite_start]st.warning(f"PERINGATAN: Jumlah kolom ({final_df.shape[1]}) tidak sesuai dengan model (70)!") [cite: 1216]
+            st.warning(f"PERINGATAN: Jumlah kolom ({final_df.shape[1]}) tidak sesuai (Harusnya 70)!") [cite: 1216]
 
-        # Cek apakah ada nilai NaN
+        # Cek apakah ada nilai NaN (kosong)
         if final_df.isnull().values.any():
             st.warning("PERINGATAN: Ada nilai kosong (NaN) dalam data input!")
             st.write(final_df.columns[final_df.isna().any()].tolist())
 
-        # 3. Eksekusi Prediksi
+        # Eksekusi Prediksi menggunakan XGBoost [cite: 57, 1252]
         res = model.predict(final_df)[0]
         prob = model.predict_proba(final_df)[0][1]
 
-        # 4. Menampilkan Hasil di dalam blok tombol
+        # Menampilkan Hasil Berdasarkan Target RainTomorrow [cite: 61]
         if res == 1:
             st.error(f"⚠️ Besok diprediksi HUJAN (Probabilitas: {prob:.1%})")
         else:
