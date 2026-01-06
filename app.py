@@ -18,31 +18,33 @@ model, assets = load_assets()
 
 # --- 2. FUNGSI TRANSFORMASI ---
 def transform_user_input(data, assets):
-    # Membuat baris data 0 sesuai jumlah fitur training (69 kolom)
+    # 1. Buat DataFrame kosong dengan kolom yang SAMA PERSIS dengan saat training
+    # Ini otomatis mengatasi masalah Temp9am, Pressure3pm, dll.
     input_df = pd.DataFrame(0, index=[0], columns=assets['feature_columns'])
     
-    # Mapping nilai numerik dengan clipping (Winsorizing) [cite: 923-925, 943]
-    input_df['Rainfall'] = np.clip(data['rainfall'], 0, 37.40)
-    input_df['Humidity3pm'] = data['humidity_3pm']
-    input_df['WindGustSpeed'] = np.clip(data['wind_gust_speed'], 15.0, 81.0)
-    input_df['Sunshine'] = data['sunshine']
-    input_df['Pressure9am'] = data['pressure_9am']
-    input_df['MinTemp'] = data['min_temp']
-    input_df['MaxTemp'] = data['max_temp']
-    
-    # Fitur Waktu [cite: 536-540]
-    input_df['Year'] = data['date'].year
-    input_df['Month'] = data['date'].month
-    input_df['Day'] = data['date'].day
-    
-    # Encoding Kategorikal [cite: 556, 615]
-    input_df['RainToday'] = assets['rain_mapping'].get(data['rain_today'], 0)
-    # Gunakan nama kolom yang sesuai dengan notebook (cek spasi vs underscore)
-    wind_col = 'WindGustDir_Encoded' if 'WindGustDir_Encoded' in input_df.columns else 'WindGustDir Encoded'
-    if wind_col in input_df.columns:
-        input_df[wind_col] = assets['wind_mapping'].get(data['wind_gust_dir'], 12)
+    # 2. Mapping nilai dari UI ke kolom yang tersedia
+    # Kita hanya mengisi kolom yang memang ada di dalam feature_columns model
+    mapping_values = {
+        'Rainfall': np.clip(data['rainfall'], 0, 37.40),
+        'Humidity3pm': data['humidity_3pm'],
+        'WindGustSpeed': np.clip(data['wind_gust_speed'], 15.0, 81.0),
+        'Sunshine': data['sunshine'],
+        'Pressure9am': data['pressure_9am'],
+        'MinTemp': data['min_temp'],
+        'MaxTemp': data['max_temp'],
+        'Year': data['date'].year,
+        'Month': data['date'].month,
+        'Day': data['date'].day,
+        'RainToday': assets['rain_mapping'].get(data['rain_today'], 0),
+        'WindGustDir_Encoded': assets['wind_mapping'].get(data['wind_gust_dir'], 12)
+    }
 
-    # One-Hot Encoding Lokasi [cite: 1209-1215]
+    # Isi nilai secara otomatis berdasarkan nama kolom
+    for col, val in mapping_values.items():
+        if col in input_df.columns:
+            input_df[col] = val
+
+    # 3. Handle Lokasi (One-Hot Encoding)
     loc_col = f"Location_{data['location']}"
     if loc_col in input_df.columns:
         input_df[loc_col] = 1
@@ -85,3 +87,4 @@ if st.button("Prediksi Sekarang"):
             st.error(f"⚠️ Besok diprediksi HUJAN ({prob:.1%})")
         else:
             st.success(f"☀️ Besok diprediksi CERAH ({prob:.1%})")
+
