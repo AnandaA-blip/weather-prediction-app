@@ -17,21 +17,23 @@ def load_assets():
 model, assets = load_assets()
 
 # --- 2. FUNGSI TRANSFORMASI ---
-def transform_user_input(data, assets):
-    # 1. Buat DataFrame kosong dengan kolom yang SAMA PERSIS dengan saat training
-    # Ini otomatis mengatasi masalah Temp9am, Pressure3pm, dll.
-    input_df = pd.DataFrame(0, index=[0], columns=assets['feature_columns'])
+def transform_user_input(data, assets, model):
+    # Mengambil daftar fitur ASLI yang diinginkan oleh model XGBoost
+    model_features = model.get_booster().feature_names
     
-    # 2. Mapping nilai dari UI ke kolom yang tersedia
-    # Kita hanya mengisi kolom yang memang ada di dalam feature_columns model
+    # Membuat DataFrame kosong dengan kolom yang sama persis dengan model
+    input_df = pd.DataFrame(0, index=[0], columns=model_features)
+    
+    # Mapping nilai dari UI ke kolom
     mapping_values = {
-        'Rainfall': np.clip(data['rainfall'], 0, 37.40),
-        'Humidity3pm': data['humidity_3pm'],
-        'WindGustSpeed': np.clip(data['wind_gust_speed'], 15.0, 81.0),
+        'MinTemp': np.clip(data['min_temp'], 1.80, 25.80), # [cite: 3510]
+        'MaxTemp': np.clip(data['max_temp'], 9.10, 40.10), # [cite: 3510]
+        'Rainfall': np.clip(data['rainfall'], 0, 37.40),  # [cite: 3510]
         'Sunshine': data['sunshine'],
-        'Pressure9am': data['pressure_9am'],
-        'MinTemp': data['min_temp'],
-        'MaxTemp': data['max_temp'],
+        'WindGustSpeed': np.clip(data['wind_gust_speed'], 15.0, 81.0), # [cite: 3510]
+        'Humidity9am': assets['imputation_values'].get('Humidity9am', 70.0),
+        'Humidity3pm': data['humidity_3pm'],
+        'Pressure9am': np.clip(data['pressure_9am'], 1000.20, 1034.00), # [cite: 3510]
         'Year': data['date'].year,
         'Month': data['date'].month,
         'Day': data['date'].day,
@@ -39,12 +41,16 @@ def transform_user_input(data, assets):
         'WindGustDir_Encoded': assets['wind_mapping'].get(data['wind_gust_dir'], 12)
     }
 
-    # Isi nilai secara otomatis berdasarkan nama kolom
-    for col, val in mapping_values.items():
-        if col in input_df.columns:
-            input_df[col] = val
+    # Mengisi nilai yang ada. Jika model minta 'Temp9am' yang dihapus, 
+    # kita isi dengan nilai median/imputasi agar tidak error.
+    for col in model_features:
+        if col in mapping_values:
+            input_df[col] = mapping_values[col]
+        else:
+            # Gunakan nilai imputasi (median) untuk fitur redundan/tidak ada di UI
+            input_df[col] = assets['imputation_values'].get(col, 0)
 
-    # 3. Handle Lokasi (One-Hot Encoding)
+    # One-Hot Encoding Lokasi
     loc_col = f"Location_{data['location']}"
     if loc_col in input_df.columns:
         input_df[loc_col] = 1
@@ -69,7 +75,7 @@ with st.sidebar:
 
 # --- 4. PREDIKSI ---
 if st.button("Prediksi Sekarang"):
-    with st.spinner('Menganalisis...'):
+    with st.spinner('Menganalisis data...'):
         inputs = {
             'date': date_in, 'location': loc_in, 'humidity_3pm': hum_in,
             'rainfall': rain_in, 'sunshine': sun_in, 'wind_gust_speed': wind_s_in,
@@ -77,14 +83,20 @@ if st.button("Prediksi Sekarang"):
             'min_temp': min_t_in, 'max_temp': max_t_in, 'rain_today': rt_in
         }
         
-        final_df = transform_user_input(inputs, assets)
-        
-        # Prediksi
+        # Tambahkan argumen 'model' ke dalam fungsi
+        final_df = transform_user_input(inputs, assets, model)
+
+        # DEBUGGING: Sekarang menggunakan final_df (bukan final_input)
+        st.write(f"Model mengharapkan {len(model.get_booster().feature_names)} fitur.")
+        st.write(f"Data input memiliki {final_df.shape[1]} fitur.")
+
+        # Eksekusi Prediksi
         res = model.predict(final_df)[0]
         prob = model.predict_proba(final_df)[0][1]
 
         if res == 1:
-            st.error(f"⚠️ Besok diprediksi HUJAN ({prob:.1%})")
+            st.error(f"⚠️ Besok HUJAN ({prob:.1%})")
         else:
-            st.success(f"☀️ Besok diprediksi CERAH ({prob:.1%})")
+            st.success(f"☀️ Besok CERAH ({prob:.1%})")
+
 
