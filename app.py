@@ -91,8 +91,8 @@ if final_input.isnull().values.any():
     st.warning("PERINGATAN: Ada nilai kosong (NaN) dalam data input!")
     st.write(final_input.columns[final_input.isna().any()].tolist())
         # Eksekusi Prediksi [cite: 1256]
-        res = model.predict(final_df)[0]
-        prob = model.predict_proba(final_df)[0][1]
+res = model.predict(final_df)[0]
+prob = model.predict_proba(final_df)[0][1]
 
     # Menampilkan Hasil
     if res == 1:
@@ -100,3 +100,4 @@ if final_input.isnull().values.any():
     else:
 
         st.success(f"☀️ Besok diprediksi CERAH (Probabilitas Hujan: {prob:.1%})")
+
