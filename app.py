@@ -16,32 +16,35 @@ model, assets = load_model_and_assets()
 
 # --- 2. FUNGSI TRANSFORMASI DATA ---
 def transform_user_input(data, assets):
-    # Membuat dataframe kosong dengan 70 kolom sesuai blueprint training [cite: 1216]
+    # Buat dataframe dengan 0 berdasarkan kolom asli training
     input_df = pd.DataFrame(0, index=[0], columns=assets['feature_columns'])
     
-    # Mapping fitur numerik utama dengan batas Winsorizing [cite: 923-925, 943]
-    input_df['Rainfall'] = np.clip(data['rainfall'], 0, 37.40)
-    input_df['Humidity3pm'] = data['humidity_3pm'] # Top Predictor [cite: 1316]
-    input_df['WindGustSpeed'] = np.clip(data['wind_gust_speed'], 15.0, 81.0)
-    input_df['Sunshine'] = data['sunshine']
-    input_df['Pressure9am'] = data['pressure_9am']
-    input_df['MinTemp'] = data['min_temp']
-    input_df['MaxTemp'] = data['max_temp']
-    
-    # Feature Engineering Waktu [cite: 535-540]
-    input_df['Year'] = data['date'].year
-    input_df['Month'] = data['date'].month
-    input_df['Day'] = data['date'].day
-    
-    # Encoding Kategorikal [cite: 556, 614]
-    input_df['RainToday'] = assets['rain_mapping'][data['rain_today']]
-    input_df['WindGustDir_Encoded'] = assets['wind_mapping'][data['wind_gust_dir']]
-    
-    # Imputasi untuk fitur yang tidak ada di UI [cite: 994]
-    input_df['WindDir9am_Encoded'] = assets['imputation_values'].get('WindDir9am_Encoded', 0)
-    input_df['WindDir3pm_Encoded'] = assets['imputation_values'].get('WindDir3pm_Encoded', 6)
+    # Gunakan pemetaan yang sangat hati-hati terhadap nama kolom
+    # Pastikan nama kolom di bawah ini sama persis dengan assets['feature_columns']
+    mapping_values = {
+        'Rainfall': np.clip(data['rainfall'], 0, 37.40),
+        'Humidity3pm': data['humidity_3pm'],
+        'WindGustSpeed': np.clip(data['wind_gust_speed'], 15.0, 81.0),
+        'Sunshine': data['sunshine'],
+        'Pressure9am': data['pressure_9am'],
+        'MinTemp': data['min_temp'],
+        'MaxTemp': data['max_temp'],
+        'Year': data['date'].year,
+        'Month': data['date'].month,
+        'Day': data['date'].day,
+        'RainToday': assets['rain_mapping'].get(data['rain_today'], 0),
+        # CEK DISINI: Apakah di model Anda pakai spasi atau underscore?
+        'WindGustDir_Encoded': assets['wind_mapping'].get(data['wind_gust_dir'], 12),
+        'WindDir9am_Encoded': assets['imputation_values'].get('WindDir9am_Encoded', 0),
+        'WindDir3pm_Encoded': assets['imputation_values'].get('WindDir3pm_Encoded', 6)
+    }
 
-    # One-Hot Encoding Lokasi [cite: 1209-1215]
+    # Isi nilai ke input_df hanya jika kolomnya ada
+    for col, val in mapping_values.items():
+        if col in input_df.columns:
+            input_df[col] = val
+
+    # Lokasi (One-Hot Encoding)
     loc_col = f"Location_{data['location']}"
     if loc_col in input_df.columns:
         input_df[loc_col] = 1
@@ -78,7 +81,15 @@ if st.button("Prediksi Sekarang"):
         }
         
         final_df = transform_user_input(inputs, assets)
-        
+# --- DEBUGGING (Tambahkan ini sementara) ---
+st.write("Jumlah Kolom Input:", final_input.shape[1])
+if final_input.shape[1] != 70:
+    st.warning(f"PERINGATAN: Jumlah kolom ({final_input.shape[1]}) tidak sesuai dengan model (70)!")
+
+# Cek apakah ada nilai NaN
+if final_input.isnull().values.any():
+    st.warning("PERINGATAN: Ada nilai kosong (NaN) dalam data input!")
+    st.write(final_input.columns[final_input.isna().any()].tolist())
         # Eksekusi Prediksi [cite: 1256]
         res = model.predict(final_df)[0]
         prob = model.predict_proba(final_df)[0][1]
@@ -87,4 +98,5 @@ if st.button("Prediksi Sekarang"):
     if res == 1:
         st.error(f"⚠️ Besok diprediksi HUJAN (Probabilitas: {prob:.1%})")
     else:
+
         st.success(f"☀️ Besok diprediksi CERAH (Probabilitas Hujan: {prob:.1%})")
