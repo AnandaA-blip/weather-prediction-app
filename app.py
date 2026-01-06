@@ -4,8 +4,15 @@ import joblib
 import numpy as np
 
 # --- 1. LOAD ASSETS ---
-model = joblib.load('final_xgb_model.joblib')
-assets = joblib.load('preprocessing_assets.joblib')
+# Tambahkan dekorator cache agar model hanya dimuat SATU KALI saat aplikasi pertama dibuka
+@st.cache_resource
+def load_assets():
+    model = joblib.load('final_xgb_model.joblib')
+    assets = joblib.load('preprocessing_assets.joblib')
+    return model, assets
+
+# Panggil fungsi
+model, assets = load_assets()
 
 st.title("Aplikasi Prediksi Hujan Australia")
 st.write("Masukkan parameter cuaca di bawah untuk memprediksi hujan esok hari.")
@@ -30,6 +37,17 @@ date_input = st.sidebar.date_input("Tanggal Observasi")
 
 # --- 3. PREDICTION LOGIC ---
 if st.button("Prediksi Cuaca"):
-    # Di sini kita akan memasukkan logika transformasi data menjadi 70 kolom
+    with st.spinner('Menghitung prediksi...'): # Spinner akan hilang otomatis setelah blok selesai
+        user_data = { ... } # Kumpulkan data
+        final_input = transform_input(user_data, assets)
+        
+        # Eksekusi prediksi
+        prediction = model.predict(final_input)[0]
+        probability = model.predict_proba(final_input)[0][1]
+        
+    # Hasil ditampilkan di luar spinner
+    if prediction == 1:
+        st.error(f"⚠️ Prediksi: BESOK HUJAN ({probability:.1%})")
+    else:
+        st.success(f"☀️ Prediksi: BESOK CERAH ({probability:.1%})")
 
-    st.write("Sedang menghitung...")
