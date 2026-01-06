@@ -95,9 +95,9 @@ res = model.predict(final_df)[0]
 prob = model.predict_proba(final_df)[0][1]
 
     # Menampilkan Hasil
-    if res == 1:
-        st.error(f"⚠️ Besok diprediksi HUJAN (Probabilitas: {prob:.1%})")
-    else:
+if res == 1:
+    st.error(f"⚠️ Besok diprediksi HUJAN (Probabilitas: {prob:.1%})")
+else:
+    st.success(f"☀️ Besok diprediksi CERAH (Probabilitas Hujan: {prob:.1%})")
 
-        st.success(f"☀️ Besok diprediksi CERAH (Probabilitas Hujan: {prob:.1%})")
 
