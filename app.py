@@ -4,8 +4,8 @@ import joblib
 import numpy as np
 
 # --- 1. LOAD ASSETS ---
-model = joblib.load('models/final_xgb_model.joblib')
-assets = joblib.load('models/preprocessing_assets.joblib')
+model = joblib.load('final_xgb_model.joblib')
+assets = joblib.load('preprocessing_assets.joblib')
 
 st.title("Aplikasi Prediksi Hujan Australia")
 st.write("Masukkan parameter cuaca di bawah untuk memprediksi hujan esok hari.")
@@ -31,4 +31,5 @@ date_input = st.sidebar.date_input("Tanggal Observasi")
 # --- 3. PREDICTION LOGIC ---
 if st.button("Prediksi Cuaca"):
     # Di sini kita akan memasukkan logika transformasi data menjadi 70 kolom
+
     st.write("Sedang menghitung...")
